@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ladder Bet Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-lg shadow-lg max-w-4xl w-full">
+	<h1 class="text-2xl font-bold text-center mb-6">Ladder Bet Calculator</h1>
+
+	<!-- Rungs Container -->
+	<div id="rungsContainer" class="space-y-6"></div>
+
+	<!-- Add Rung Button -->
+	<button id="addRungButton" type="button" 
+			class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md shadow mt-4">
+	  Add Rung
+	</button>
+
+	<!-- Calculate Button -->
+	<button type="button" onclick="calculateLadder()" 
+			class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md shadow mt-6">
+	  Calculate
+	</button>
+
+	<!-- Copy URL Button -->
+	<button id="copyUrlButton" type="button" 
+			class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-md shadow mt-4">
+	  Copy this Ladder URL to Clipboard
+	</button>
+
+	<!-- Results Display -->
+	<div id="results" class="mt-6 bg-gray-50 p-6 rounded-lg shadow-sm">
+	  <h2 class="text-lg font-semibold mb-4">Results</h2>
+	  <table class="w-full border-collapse text-left">
+		<thead>
+		  <tr>
+			<th class="border-b pb-2">Rung</th>
+			<th class="border-b pb-2">Outcome</th>
+			<th class="border-b pb-2">Odds</th>
+			<th class="border-b pb-2">Bet Size (Units)</th>
+			<th class="border-b pb-2">Potential Profit (Units)</th>
+		  </tr>
+		</thead>
+		<tbody id="resultsBody"></tbody>
+	  </table>
+
+	  <div id="totals" class="mt-4">
+		<p><strong>Total Units Bet:</strong> <span id="totalUnits"></span></p>
+		<p><strong>Total Potential Profit:</strong> <span id="totalProfit"></span></p>
+	  </div>
+
+	  <div id="scenarios" class="mt-4">
+		<h3 class="text-md font-semibold mb-2">Scenario Outcomes</h3>
+		<table class="w-full border-collapse text-left">
+		  <thead>
+			<tr>
+			  <th class="border-b pb-2">Scenario</th>
+			  <th class="border-b pb-2">Won</th>
+			  <th class="border-b pb-2">Loss</th>
+			  <th class="border-b pb-2">Net</th>
+			</tr>
+		  </thead>
+		  <tbody id="scenarioOutcomes"></tbody>
+		</table>
+	  </div>
+	</div>
+  </div>
+
+  <script>
+	let rungs = [];
+	let rungValues = {};
+
+	document.addEventListener('DOMContentLoaded', () => {
+	  const params = new URLSearchParams(window.location.search);
+
+	  const outcomes = params.get('outcomes')?.split(',').map(decodeURIComponent) || [];
+	  const odds = params.get('odds')?.split(',').map(decodeURIComponent) || [];
+	  const units = params.get('units')?.split(',').map(decodeURIComponent) || [];
+
+	  console.log('Outcomes:', outcomes);
+	  console.log('Odds:', odds);
+	  console.log('Units:', units);
+
+	  if (outcomes.length > 0) {
+		outcomes.forEach((outcome, index) => {
+		  const odd = odds[index] || '';
+		  const unit = units[index] || '0';
+		  addRungWithValues(outcome, odd, unit);
+		});
+	  } else {
+		addRung();
+	  }
+	});
+
+	document.getElementById('addRungButton').addEventListener('click', () => {
+	  saveRungValues();
+	  addRung();
+	});
+
+	document.getElementById('copyUrlButton').addEventListener('click', copyLadderUrlToClipboard);
+
+	function addRungWithValues(outcome = '', odds = '', units = '0') {
+	  const rungId = Date.now() + Math.random();
+	  rungs.push(rungId);
+	  rungValues[rungId] = { outcome, odds, units };
+	  renderRungs();
+	}
+
+	function addRung() {
+	  addRungWithValues();
+	}
+
+	function removeRung(rungId) {
+	  delete rungValues[rungId];
+	  rungs = rungs.filter(id => id !== rungId);
+	  renderRungs();
+	}
+
+	function saveRungValues() {
+	  rungs.forEach((rungId) => {
+		const outcome = document.getElementById(`outcome${rungId}`)?.value || '';
+		const odds = document.getElementById(`odds${rungId}`)?.value || '';
+		const units = document.getElementById(`units${rungId}`)?.value || '0';
+		rungValues[rungId] = { outcome, odds, units };
+	  });
+	}
+
+	function renderRungs() {
+	  const rungsContainer = document.getElementById('rungsContainer');
+	  rungsContainer.innerHTML = '';
+
+	  rungs.forEach((rungId, index) => {
+		const { outcome, odds, units } = rungValues[rungId];
+
+		const rungHTML = `
+		  <div class="flex items-center space-x-4">
+			<div class="flex-1">
+			  <label for="outcome${rungId}" class="block text-sm font-medium text-gray-700">
+				${index + 1}th Rung Outcome:
+			  </label>
+			  <input type="text" id="outcome${rungId}" value="${outcome}" 
+					 class="w-full p-2 border rounded-md shadow-sm">
+			</div>
+			<div class="w-1/4">
+			  <label for="odds${rungId}" class="block text-sm font-medium text-gray-700">Odds:</label>
+			  <input type="number" id="odds${rungId}" value="${odds}" 
+					 class="w-full p-2 border rounded-md shadow-sm">
+			</div>
+			<div class="w-1/4">
+			  <label for="units${rungId}" class="block text-sm font-medium text-gray-700">Units:</label>
+			  <input type="number" id="units${rungId}" value="${units}" min="0" 
+					 class="w-full p-2 border rounded-md shadow-sm">
+			</div>
+			<button onclick="removeRung(${rungId})" class="text-red-600 text-sm">❌</button>
+		  </div>
+		`;
+		rungsContainer.insertAdjacentHTML('beforeend', rungHTML);
+	  });
+	}
+
+	function copyLadderUrlToClipboard() {
+	  saveRungValues();
+	  const outcomes = rungs.map(rungId => encodeURIComponent(rungValues[rungId].outcome)).join(',');
+	  const odds = rungs.map(rungId => encodeURIComponent(rungValues[rungId].odds)).join(',');
+	  const units = rungs.map(rungId => encodeURIComponent(rungValues[rungId].units)).join(',');
+	  const url = `${window.location.origin}${window.location.pathname}?outcomes=${outcomes}&odds=${odds}&units=${units}`;
+
+	  navigator.clipboard.writeText(url).then(() => alert('URL copied!'));
+	}
+
+	function calculateLadder() {
+	  const bets = [];
+	  const payouts = [];
+
+	  rungs.forEach(rungId => {
+		const odds = parseFloat(document.getElementById(`odds${rungId}`)?.value) || 0;
+		const units = parseFloat(document.getElementById(`units${rungId}`)?.value) || 0;
+		const payout = odds < 0 ? units / (Math.abs(odds) / 100) : units * (odds / 100);
+		bets.push(units);
+		payouts.push(payout);
+	  });
+
+	  document.getElementById('totalUnits').textContent = bets.reduce((acc, bet) => acc + bet, 0).toFixed(2);
+	  document.getElementById('totalProfit').textContent = payouts.reduce((acc, payout) => acc + payout, 0).toFixed(2);
+
+	  const scenarioOutcomes = document.getElementById('scenarioOutcomes');
+	  scenarioOutcomes.innerHTML = payouts.map((_, i) => {
+		const won = payouts.slice(0, i + 1).reduce((acc, p) => acc + p, 0);
+		const lost = bets.slice(i + 1).reduce((acc, b) => acc + b, 0);
+		const net = won - lost;
+		return `<tr>
+				  <td>${i + 1} Rung${i > 0 ? 's' : ''} Won</td>
+				  <td>${won.toFixed(2)} units</td>
+				  <td>${lost.toFixed(2)} units</td>
+				  <td>${net.toFixed(2)} units</td>
+				</tr>`;
+	  }).join('');
+	}
+  </script>
+
+</body>
+</html>
